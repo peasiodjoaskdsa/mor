@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- Office JavaScript API -->
+    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    <!-- Add the OpenAI GPT-3 library -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/openai@0.10.0/dist/openai.min.js"></script>
+</head>
+
+<body>
+    <p>This add-in will insert the text 'Hello world!' in a new message.</p>
+    <button id="helloButton">Say hello</button>
+
+    <!-- The following image URL tracks diagnostic data for this sample add-in. Please remove the image tag if you reuse this sample in your own code project. -->
+    <img src="https://pnptelemetry.azurewebsites.net/pnp-officeaddins/samples/outlook-add-in-hello-world-run" />
+</body>
+
+<script>
+    // Set your OpenAI GPT-3 API key here
+    const apiKey = "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";
+    // Initialize the OpenAI API with your key
+    openai.apiKey = apiKey;
+
+    Office.onReady((info) => {
+        if (info.host === Office.HostType.Outlook) {
+            document.getElementById("helloButton").onclick = sayHello;
+        }
+    });
+
+    /**
+     * Writes 'Hello world!' to a new message body.
+     */
+    function sayHello() {
+        Office.context.mailbox.item.body.getAsync("html", function (result) {
+            if (result.status === Office.AsyncResultStatus.Succeeded) {
+                var emailText = result.value;
+                correctTextWithChatGPT(emailText);
+            }
+        });
+    }
+
+    /**
+     * Corrects the text using ChatGPT and replaces it in the new message body.
+     */
+    function correctTextWithChatGPT(emailText) {
+        // Call ChatGPT to get the corrected version
+        var prompt = `Correct the following text: ${emailText}`;
+        openai.Completion.create(
+            {
+                engine: "text-davinci-002", // Choose the engine that best suits your needs
+                prompt: prompt,
+                max_tokens: 150, // You can adjust this parameter based on the desired response length
+                temperature: 0.7, // You can adjust this parameter to control the randomness of the response
+                stop: null, // You can add custom stop sequences if needed to control the completion
+            },
+            function (error, response) {
+                if (error) {
+                    console.error(error);
+                } else {
+                    var correctedText = response.choices[0].text.trim();
+                    replaceTextInNewMessage(correctedText);
+                }
+            }
+        );
+    }
+
+    /**
+     * Replaces the text in the new message body with the corrected version.
+     */
+    function replaceTextInNewMessage(correctedText) {
+        Office.context.mailbox.item.body.setAsync(
+            correctedText,
+            {
+                coercionType: "html", // Write text as HTML
+            },
+            function (asyncResult) {
+                if (asyncResult.status === Office.AsyncResultStatus.Failed) {
+                    write(asyncResult.error.message);
+                }
+            }
+        );
+    }
+</script>
+
+</html>
